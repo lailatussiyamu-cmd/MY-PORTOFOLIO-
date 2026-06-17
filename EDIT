@@ -1,0 +1,479 @@
+// ============================================================
+// BERLIN REAL ESTATE REPORT GENERATOR
+// Data Analysis Report - 2020-2026
+// ============================================================
+
+const fs = require('fs');
+
+// ============================================================
+// DATA - SAMPLE (Anda bisa menambahkan data lengkap di sini)
+// ============================================================
+
+const data = {
+  summary: {
+    reportDate: "2026-06-17",
+    analystName: "Data Analyst",
+    periodStart: "2020-01",
+    periodEnd: "2026-04",
+    totalDistricts: 60,
+    totalBezirke: 12,
+    dataSource: "Kaggle / Immowelt.de"
+  },
+  topDistricts: [
+    { rank: 1, name: "Grunewald", bezirk: "Charlottenburg-Wilmersdorf", price: 11121, category: "high", growth: 42 },
+    { rank: 2, name: "Dahlem", bezirk: "Steglitz-Zehlendorf", price: 9757, category: "high", growth: 38 },
+    { rank: 3, name: "Hansaviertel", bezirk: "Mitte", price: 9907, category: "high", growth: 35 },
+    { rank: 4, name: "Tiergarten", bezirk: "Mitte", price: 9929, category: "high", growth: 33 },
+    { rank: 5, name: "Mitte (Ort)", bezirk: "Mitte", price: 9356, category: "high", growth: 45 }
+  ],
+  lowestDistricts: [
+    { rank: 1, name: "Falkenhagener Feld", bezirk: "Spandau", price: 3364, category: "low" },
+    { rank: 2, name: "Marzahn", bezirk: "Marzahn-Hellersdorf", price: 3338, category: "low" },
+    { rank: 3, name: "Hellersdorf", bezirk: "Marzahn-Hellersdorf", price: 2887, category: "low" },
+    { rank: 4, name: "Staaken", bezirk: "Spandau", price: 3540, category: "low" },
+    { rank: 5, name: "Gropiusstadt", bezirk: "Neukölln", price: 3917, category: "low" }
+  ],
+  growthData: [
+    { district: "Mitte (Ort)", growth: 45, bezirk: "Mitte" },
+    { district: "Neukölln (Ort)", growth: 42, bezirk: "Neukölln" },
+    { district: "Prenzlauer Berg", growth: 41, bezirk: "Pankow" },
+    { district: "Friedrichshain", growth: 38, bezirk: "Friedrichshain-Kreuzberg" },
+    { district: "Kreuzberg", growth: 36, bezirk: "Friedrichshain-Kreuzberg" },
+    { district: "Spandau (Ort)", growth: 22, bezirk: "Spandau" },
+    { district: "Marzahn", growth: 15, bezirk: "Marzahn-Hellersdorf" },
+    { district: "Hellersdorf", growth: 12, bezirk: "Marzahn-Hellersdorf" }
+  ],
+  priceToRent: [
+    { district: "Neukölln (Ort)", years: 23 },
+    { district: "Wedding", years: 26 },
+    { district: "Friedrichshain", years: 28 },
+    { district: "Pankow (Ort)", years: 29 },
+    { district: "Mitte (Ort)", years: 32 },
+    { district: "Grunewald", years: 40 }
+  ],
+  categoryStats: {
+    high: {
+      count: 18,
+      avgPrice: 9870,
+      avgRent: 26.5,
+      avgGrowth: 38
+    },
+    medium: {
+      count: 25,
+      avgPrice: 6200,
+      avgRent: 18.2,
+      avgGrowth: 28
+    },
+    low: {
+      count: 17,
+      avgPrice: 3600,
+      avgRent: 11.5,
+      avgGrowth: 18
+    }
+  },
+  insights: [
+    "Distrik termahal adalah Grunewald dengan harga €11.121/m².",
+    "Pertumbuhan harga tertinggi terjadi di Mitte dengan 45% (2020-2026).",
+    "Neukölln menawarkan yield terbaik dengan rasio harga/sewa hanya 23 tahun.",
+    "Tidak ada korelasi kuat antara jumlah listing dan harga properti.",
+    "Harga di area high 3x lipat lebih tinggi dibanding area low.",
+    "Lonjakan harga terbesar terjadi pada tahun 2022 (pasca-pandemi)."
+  ],
+  recommendations: [
+    "Investasi properti di Neukölln dan Wedding menawarkan yield terbaik.",
+    "Area medium seperti Pankow dan Schöneberg menawarkan keseimbangan harga dan pertumbuhan.",
+    "Pengembang properti sebaiknya fokus pada area dengan potensi gentrifikasi.",
+    "Pemerintah daerah perlu membangun perumahan terjangkau di Marzahn dan Hellersdorf."
+  ],
+  limitations: [
+    "Data menggunakan harga listing, bukan harga transaksi aktual.",
+    "Tidak mempertimbangkan faktor makroekonomi seperti suku bunga dan inflasi.",
+    "Data hanya dari satu sumber (Immowelt.de).",
+    "Tidak ada data demografi, akses transportasi, atau kualitas sekolah."
+  ]
+};
+
+// ============================================================
+// HTML TEMPLATE
+// ============================================================
+
+function generateHTML(data) {
+  return `
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Berlin Real Estate Report 2020-2026</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #fff;
+            padding: 50px 40px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::after {
+            content: "🏠";
+            position: absolute;
+            right: 40px;
+            bottom: 20px;
+            font-size: 80px;
+            opacity: 0.15;
+        }
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .header .subtitle {
+            font-size: 18px;
+            opacity: 0.85;
+            margin-bottom: 4px;
+        }
+        .header .meta {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 12px;
+        }
+        .header .meta span {
+            margin-right: 24px;
+        }
+        /* Cards */
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+        }
+        .card h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 16px;
+            border-bottom: 3px solid #0f3460;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card h2 .icon {
+            font-size: 24px;
+        }
+        /* Grid */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+            .header::after {
+                font-size: 50px;
+                right: 20px;
+                bottom: 10px;
+            }
+        }
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        thead th {
+            background: #f8f9fa;
+            text-align: left;
+            padding: 10px 12px;
+            font-weight: 600;
+            border-bottom: 2px solid #e9ecef;
+        }
+        tbody td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-high { background: #fee2e2; color: #991b1b; }
+        .badge-medium { background: #fef3c7; color: #92400e; }
+        .badge-low { background: #d1fae5; color: #065f46; }
+        .badge-growth { background: #dbeafe; color: #1e40af; }
+        /* Stats */
+        .stat-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .stat-item {
+            flex: 1;
+            min-width: 120px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 14px 18px;
+            text-align: center;
+        }
+        .stat-item .number {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0f3460;
+        }
+        .stat-item .label {
+            font-size: 13px;
+            color: #6b7280;
+        }
+        /* Insight & Recommendation */
+        .insight-list, .rec-list, .lim-list {
+            list-style: none;
+            padding: 0;
+        }
+        .insight-list li, .rec-list li, .lim-list li {
+            padding: 8px 0 8px 28px;
+            position: relative;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .insight-list li:last-child, .rec-list li:last-child, .lim-list li:last-child {
+            border-bottom: none;
+        }
+        .insight-list li::before { content: "🔍"; position: absolute; left: 0; }
+        .rec-list li::before { content: "💡"; position: absolute; left: 0; }
+        .lim-list li::before { content: "⚠️"; position: absolute; left: 0; }
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 13px;
+            padding: 30px 0 10px;
+            border-top: 1px solid #e5e7eb;
+            margin-top: 20px;
+        }
+        /* Color bar for growth */
+        .growth-bar {
+            display: inline-block;
+            height: 10px;
+            border-radius: 6px;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🏙️ Berlin Real Estate Report</h1>
+            <div class="subtitle">Analisis Tren Harga Properti 2020-2026</div>
+            <div class="meta">
+                <span>📅 Laporan: ${data.summary.reportDate}</span>
+                <span>📊 Periode: ${data.summary.periodStart} - ${data.summary.periodEnd}</span>
+                <span>📍 ${data.summary.totalDistricts} Distrik · ${data.summary.totalBezirke} Kecamatan</span>
+                <span>📁 Sumber: ${data.summary.dataSource}</span>
+            </div>
+        </div>
+
+        <!-- EXECUTIVE SUMMARY -->
+        <div class="card">
+            <h2><span class="icon">📌</span> Ringkasan Eksekutif</h2>
+            <div class="stat-row">
+                <div class="stat-item">
+                    <div class="number">€${data.topDistricts[0].price.toLocaleString()}</div>
+                    <div class="label">Harga Tertinggi (${data.topDistricts[0].name})</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number">${data.growthData[0].growth}%</div>
+                    <div class="label">Pertumbuhan Tertinggi (${data.growthData[0].district})</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number">€${data.lowestDistricts[0].price.toLocaleString()}</div>
+                    <div class="label">Harga Terendah (${data.lowestDistricts[0].name})</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number">${data.priceToRent[0].years} th</div>
+                    <div class="label">Yield Terbaik (${data.priceToRent[0].district})</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOP DISTRICTS & LOWEST DISTRICTS -->
+        <div class="grid-2">
+            <div class="card">
+                <h2><span class="icon">🏆</span> 5 Distrik Termahal</h2>
+                <table>
+                    <thead><tr><th>#</th><th>Distrik</th><th>Kecamatan</th><th>Harga/m²</th></tr></thead>
+                    <tbody>
+                        ${data.topDistricts.map(d => `
+                            <tr>
+                                <td>${d.rank}</td>
+                                <td><strong>${d.name}</strong> <span class="badge badge-${d.category}">${d.category}</span></td>
+                                <td>${d.bezirk}</td>
+                                <td>€${d.price.toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h2><span class="icon">📉</span> 5 Distrik Termurah</h2>
+                <table>
+                    <thead><tr><th>#</th><th>Distrik</th><th>Kecamatan</th><th>Harga/m²</th></tr></thead>
+                    <tbody>
+                        ${data.lowestDistricts.map(d => `
+                            <tr>
+                                <td>${d.rank}</td>
+                                <td><strong>${d.name}</strong> <span class="badge badge-${d.category}">${d.category}</span></td>
+                                <td>${d.bezirk}</td>
+                                <td>€${d.price.toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- GROWTH -->
+        <div class="card">
+            <h2><span class="icon">📈</span> Pertumbuhan Harga per Distrik (2020-2026)</h2>
+            <table>
+                <thead><tr><th>Distrik</th><th>Kecamatan</th><th>Pertumbuhan</th><th>Visual</th></tr></thead>
+                <tbody>
+                    ${data.growthData.map(d => `
+                        <tr>
+                            <td><strong>${d.district}</strong></td>
+                            <td>${d.bezirk}</td>
+                            <td><span class="badge badge-growth">${d.growth}%</span></td>
+                            <td>
+                                <div style="width:100%; background:#e5e7eb; border-radius:4px; height:8px; max-width:200px;">
+                                    <div style="width:${d.growth}%; background:${d.growth > 35 ? '#0f3460' : d.growth > 25 ? '#3b82f6' : '#9ca3af'}; height:8px; border-radius:4px;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PRICE TO RENT -->
+        <div class="card">
+            <h2><span class="icon">💰</span> Rasio Harga / Sewa (Tahun Balik Modal)</h2>
+            <p style="color:#6b7280; font-size:14px; margin-bottom:12px;">Semakin rendah angka, semakin cepat balik modal (yield lebih baik).</p>
+            <table>
+                <thead><tr><th>Distrik</th><th>Tahun</th><th>Visual</th></tr></thead>
+                <tbody>
+                    ${data.priceToRent.map(d => `
+                        <tr>
+                            <td><strong>${d.district}</strong></td>
+                            <td>${d.years} tahun</td>
+                            <td>
+                                <div style="width:100%; background:#e5e7eb; border-radius:4px; height:8px; max-width:200px;">
+                                    <div style="width:${Math.max(10, 100 - (d.years - 20) * 3)}%; background:${d.years < 25 ? '#10b981' : d.years < 32 ? '#f59e0b' : '#ef4444'}; height:8px; border-radius:4px;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- CATEGORY STATS -->
+        <div class="card">
+            <h2><span class="icon">📊</span> Statistik per Kategori Harga</h2>
+            <div class="stat-row">
+                ${Object.entries(data.categoryStats).map(([key, val]) => `
+                    <div class="stat-item" style="border-left:4px solid ${key === 'high' ? '#ef4444' : key === 'medium' ? '#f59e0b' : '#10b981'};">
+                        <div class="number" style="font-size:18px;">${key.toUpperCase()}</div>
+                        <div style="font-size:13px; color:#4b5563;">
+                            ${val.count} distrik · Harga: €${val.avgPrice.toLocaleString()}
+                            <br>Sewa: €${val.avgRent}/m² · Pertumbuhan: ${val.avgGrowth}%
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <p style="margin-top:12px; color:#6b7280; font-size:14px;">
+                📌 Harga di area <strong>high</strong> 3x lipat lebih tinggi dibanding area <strong>low</strong>, 
+                namun sewa hanya 2x lipat.
+            </p>
+        </div>
+
+        <!-- INSIGHTS -->
+        <div class="card">
+            <h2><span class="icon">🔍</span> Temuan Utama (Key Insights)</h2>
+            <ul class="insight-list">
+                ${data.insights.map(i => `<li>${i}</li>`).join('')}
+            </ul>
+        </div>
+
+        <!-- RECOMMENDATIONS -->
+        <div class="card" style="border-left:4px solid #0f3460;">
+            <h2><span class="icon">💡</span> Rekomendasi Strategis</h2>
+            <ul class="rec-list">
+                ${data.recommendations.map(r => `<li>${r}</li>`).join('')}
+            </ul>
+        </div>
+
+        <!-- LIMITATIONS -->
+        <div class="card" style="border-left:4px solid #ef4444;">
+            <h2><span class="icon">⚠️</span> Keterbatasan Analisis</h2>
+            <ul class="lim-list">
+                ${data.limitations.map(l => `<li>${l}</li>`).join('')}
+            </ul>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>Dibuat oleh ${data.summary.analystName} · Data dari Kaggle/Immowelt.de · ${data.summary.reportDate}</p>
+            <p style="margin-top:4px;">🔗 Untuk keperluan portofolio data analyst</p>
+        </div>
+
+    </div>
+</body>
+</html>
+  `;
+}
+
+// ============================================================
+// GENERATE REPORT
+// ============================================================
+
+const html = generateHTML(data);
+fs.writeFileSync('berlin_real_estate_report.html', html, 'utf8');
+
+console.log('✅ Laporan berhasil dibuat!');
+console.log('📁 File: berlin_real_estate_report.html');
+console.log('📊 Buka file tersebut di browser Anda.');
