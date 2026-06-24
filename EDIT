@@ -6,7 +6,7 @@
 const fs = require('fs');
 
 // ============================================================
-// DATA - SAMPLE (Anda bisa menambahkan data lengkap di sini)
+// DATA - SAMPLE (kaagle dataset)
 // ============================================================
 
 const data = {
